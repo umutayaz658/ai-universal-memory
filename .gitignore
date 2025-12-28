@@ -1,0 +1,20 @@
+# Python & Django
+__pycache__/
+*.pyc
+db.sqlite3
+*.log
+
+# Environment & Secrets (ÇOK ÖNEMLİ)
+.env
+.venv/
+venv/
+env/
+
+# IDE Settings (Gereksiz kalabalık yapmasın)
+.vscode/
+.idea/
+.DS_Store
+
+# Static & Media (Eğer varsa)
+staticfiles/
+media/

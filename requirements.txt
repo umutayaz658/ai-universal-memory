@@ -1,0 +1,9 @@
+django>=5.0
+djangorestframework
+psycopg2-binary
+python-dotenv
+google-generativeai
+pgvector
+django-cors-headers
+markdown
+xhtml2pdf
