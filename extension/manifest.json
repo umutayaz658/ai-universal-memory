@@ -9,7 +9,8 @@
         "scripting"
     ],
     "host_permissions": [
-        "http://127.0.0.1:8000/*"
+        "http://127.0.0.1:8000/*",
+        "https://chat.deepseek.com/*"
     ],
     "action": {
         "default_popup": "popup.html"
@@ -18,7 +19,8 @@
         {
             "matches": [
                 "https://chatgpt.com/*",
-                "https://gemini.google.com/*"
+                "https://gemini.google.com/*",
+                "https://chat.deepseek.com/*"
             ],
             "js": [
                 "content.js"

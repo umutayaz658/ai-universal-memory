@@ -98,7 +98,11 @@ class StoreMemoryView(views.APIView):
 
             # 3. DEDUPLICATION CHECK
             # A) CORRECTION BYPASS
-            correction_keywords = {'correction', 'change', 'update', 'düzeltme', 'renaming', 'degisiklik', 'yanlis', 'hatali', 'revision'}
+            correction_keywords = {
+                'correction', 'change', 'update', 'düzeltme', 'degisiklik', 
+                'yenileme', 'revizyon', 'guncelleme', 
+                'status', 'durum', 'pending', 'beklemede', 'draft', 'taslak'
+            }
             is_correction = False
             for tag in tags:
                 tag_lower = str(tag).lower()
@@ -112,7 +116,7 @@ class StoreMemoryView(views.APIView):
                 # B) STANDARD DEDUPLICATION
                 similar_memories = Memory.objects.filter(project=project) \
                     .annotate(distance=CosineDistance('vector', embedding)) \
-                    .filter(distance__lt=0.08) \
+                    .filter(distance__lt=0.05) \
                     .order_by('distance')
                     
                 if similar_memories.exists():
