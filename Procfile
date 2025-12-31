@@ -1,0 +1,1 @@
+web: python manage.py migrate && gunicorn universal_memory.wsgi --log-file -
