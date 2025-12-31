@@ -12,3 +12,4 @@ python-dotenv
 gunicorn
 cryptography
 dj-database-url
+whitenoise
