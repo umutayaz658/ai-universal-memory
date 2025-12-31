@@ -1,4 +1,4 @@
-console.log("🚀 AI Memory Extension Loaded (V63 - Polling Fix & DeepSeek Stability)");
+console.log("🚀 AI Memory Extension Loaded (V105 - Spaceholder Strategy)");
 
 // 1. GLOBAL STATE
 let globalState = { auth_token: null, selected_project_id: null };
@@ -16,13 +16,12 @@ chrome.storage.onChanged.addListener((changes) => {
     if (changes.auth_token) globalState.auth_token = changes.auth_token.newValue;
     if (changes.selected_project_id) globalState.selected_project_id = changes.selected_project_id.newValue;
 
-    // Handle logout/cleanup
     if (changes.auth_token && !changes.auth_token.newValue) globalState.auth_token = null;
     if (changes.selected_project_id && !changes.selected_project_id.newValue) globalState.selected_project_id = null;
 });
 
 // 4. SITES CONFIG
-const SITES = {
+const DEFAULT_SITES = {
     'chatgpt.com': {
         button: 'button[data-testid="send-button"], button[data-testid="fruitjuice-send-button"], #composer-submit-button',
         stopButtonSelector: 'button[aria-label="Stop generating"], button[data-testid="stop-button"]',
@@ -41,44 +40,68 @@ const SITES = {
         button: 'div[role="button"]:has(svg)',
         stopButtonSelector: ['div[role="button"]:has(svg rect)', '.ds-stop-button', '[aria-label="Stop"]'],
         streamingSelector: '.ds-markdown--assistant.streaming',
-        userMsg: ['div.fbb737a4', '.ds-markdown--user'], // Weak fallbacks
-        aiMsg: ['.ds-markdown'] // Strong selector
+        userMsg: ['div.fbb737a4', '.ds-markdown--user'],
+        aiMsg: ['.ds-markdown']
+    },
+    'chat.mistral.ai': {
+        button: 'button[aria-label="Send query"], button:has(svg)',
+        stopButtonSelector: 'button[aria-label="Stop generating"]',
+        streamingSelector: '.animate-pulse',
+        userMsg: ['.bg-basic-gray-alpha-4 .select-text', 'div.ms-auto .select-text', '.select-text'],
+        aiMsg: ['div[data-message-part-type="answer"]', '.markdown-container-style', '.prose']
+    },
+    'perplexity.ai': {
+        button: 'button[aria-label="Submit"], button[aria-label="Ask"]',
+        stopButtonSelector: 'button[aria-label="Stop"]',
+        streamingSelector: '.animate-pulse',
+        userMsg: ['h1 .select-text', 'div[class*="group/query"] .select-text', '.font-display'],
+        aiMsg: ['.prose', 'div[dir="auto"]']
     }
 };
 
+let activeSitesConfig = DEFAULT_SITES;
+
+function fetchRemoteConfig() {
+    console.log("🌐 Fetching Remote Site Config...");
+    fetch('http://127.0.0.1:8000/api/config/sites/')
+        .then(res => res.json())
+        .then(data => {
+            if (data && Object.keys(data).length > 0) {
+                activeSitesConfig = data;
+                console.log("✅ Remote Config Applied:", Object.keys(data));
+            }
+        })
+        .catch(err => console.warn("⚠️ Config Fetch Failed, using Defaults:", err));
+}
+
+fetchRemoteConfig();
+
 function getSiteConfig() {
     const hostname = window.location.hostname;
-    if (hostname.includes('chatgpt.com')) return SITES['chatgpt.com'];
-    if (hostname.includes('google.com')) return SITES['gemini.google.com'];
-    if (hostname.includes('deepseek.com')) return SITES['chat.deepseek.com'];
+    for (const [domain, config] of Object.entries(activeSitesConfig)) {
+        if (hostname.includes(domain)) return config;
+    }
     return null;
 }
 
-// Helper: Check if an element is actually visible to the user
 function isVisible(elem) {
     if (!elem) return false;
     return !!(elem.offsetWidth || elem.offsetHeight || elem.getClientRects().length);
 }
 
-// Helper: robustly identify an editable element
 function getEditableElement(el) {
     if (!el) return null;
     if (el.tagName === 'TEXTAREA') return el;
     if (el.tagName === 'INPUT' && el.type !== 'password' && el.type !== 'hidden') return el;
     if (el.isContentEditable) return el;
-
-    // Fallback: Check for ARIA role
     if (el.getAttribute('role') === 'textbox') return el;
-
     return el.closest('[contenteditable="true"], [role="textbox"], textarea, input');
 }
 
-// Helper: Smart Message Scraper (Resolves DeepSeek issues)
 function getMessages(config) {
     let userMsgs = [];
     let aiMsgs = [];
 
-    // 1. Try Standard Selectors
     if (Array.isArray(config.userMsg)) {
         for (const sel of config.userMsg) {
             const found = document.querySelectorAll(sel);
@@ -97,124 +120,44 @@ function getMessages(config) {
         aiMsgs = Array.from(document.querySelectorAll(config.aiMsg));
     }
 
-    // 2. DeepSeek Content-Aware Fallback
+    // DeepSeek Fallback
     if (window.location.hostname.includes('deepseek.com')) {
-        // AI messages are usually stable (.ds-markdown)
-        if (aiMsgs.length === 0) {
-            aiMsgs = Array.from(document.querySelectorAll('.ds-markdown'));
-        }
-
+        if (aiMsgs.length === 0) aiMsgs = Array.from(document.querySelectorAll('.ds-markdown'));
         if (userMsgs.length === 0 && aiMsgs.length > 0) {
-            // FALLBACK STRATEGY 1: Look for "SYSTEM CONTEXT INJECTION"
-            // (Only works if we actually injected)
             const allDivs = document.querySelectorAll('div');
-            // Filter efficiently: text must exist and be reasonable length
             const candidate = Array.from(allDivs).find(d =>
                 d.textContent.includes("SYSTEM CONTEXT INJECTION") && d.textContent.length < 10000
             );
-
-            if (candidate) {
-                userMsgs = [candidate];
-                console.log("🔦 DeepSeek: Found user message via Content Search");
-            } else {
-                // FALLBACK STRATEGY 2: Sibling Traversal
-                // Find the container of the last AI message and assume previous sibling is User
-                const lastAi = aiMsgs[aiMsgs.length - 1];
-                let curr = lastAi;
-                // Traverse up a few levels to find the message bubble container
-                // This is a heuristic guess
-                for (let i = 0; i < 5; i++) {
-                    if (!curr || !curr.parentElement || curr.tagName === 'BODY') break;
-                    if (curr.previousElementSibling) {
-                        userMsgs = [curr.previousElementSibling];
-                        console.log("🔦 DeepSeek: Found user message via Sibling Traversal");
-                        break;
-                    }
-                    curr = curr.parentElement;
-                }
-            }
+            if (candidate) userMsgs = [candidate];
         }
     }
-
     return { userMsgs, aiMsgs };
 }
 
-// Helper: Simulate Paste (Bypasses contenteditable="false" & React locks)
-function simulatePaste(element, text) {
-    console.log("📋 Simulating Paste Event (V80 - execCommand Priority)...");
-
-    element.focus();
-
-    // 1. Try execCommand (Standard for Rich Text Editors like Gemini)
-    // This is deprecated but still the most reliable way to trigger internal editor events
-    const success = document.execCommand('insertText', false, text);
-
-    if (success) {
-        console.log("✅ execCommand successful");
-        return;
-    }
-
-    console.warn("⚠️ execCommand failed, trying ClipboardEvent fallback...");
-
-    // 2. Fallback: Clipboard Event
-    const dataTransfer = new DataTransfer();
-    dataTransfer.setData('text/plain', text);
-    const event = new ClipboardEvent('paste', {
-        clipboardData: dataTransfer,
-        bubbles: true,
-        cancelable: true
-    });
-    element.dispatchEvent(event);
-
-    // 3. Fallback: Direct Value Setter (TextAreas / Inputs)
-    if (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT') {
-        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
-        if (nativeInputValueSetter) {
-            nativeInputValueSetter.call(element, text);
-        } else {
-            element.value = text;
-        }
-        element.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-}
-
-// --- PART 1: UNIVERSAL INPUT DETECTION (SHADOW DOM SUPPORT) ---
+// --- PART 1: UNIVERSAL INPUT DETECTION ---
 document.addEventListener('keydown', (e) => {
     if (!e.isTrusted) return;
     if (e.key !== 'Enter' || e.shiftKey) return;
 
-    // 1. Identify Site Config
     const config = getSiteConfig();
     if (!config) return;
 
-    // 2. Resolve Target (Shadow DOM Safe)
     const target = e.composedPath ? e.composedPath()[0] : e.target;
-
-    console.log("🎹 Enter Key Pressed on:", target);
-
-    // 3. Property-Based Detection
     const editableElement = getEditableElement(target);
 
-    if (!editableElement) {
-        // Not an input field, ignore.
-        return;
-    }
+    if (!editableElement) return;
 
-    console.log("🎯 Editable Element Resolved:", editableElement);
-
-    // FIX: Use textContent for robust reading
     const rawInput = editableElement.textContent || editableElement.value || "";
     const cleanInput = rawInput.trim();
 
-    // FIX: Empty Query check
     if (cleanInput.length < 2) return;
 
-    // Loop Prevention
+    // --- İKİNCİ ENTER (GÖNDERME) MANTIĞI ---
     if (cleanInput.includes("SYSTEM CONTEXT INJECTION")) {
-        console.log("✅ User approved injection. STARTING POLL...");
+        console.log("✅ User approved injection (Second Enter). STARTING POLL...");
         startPolling(config);
         lastCheckedInput = null;
-        return;
+        return; // İzin ver
     }
 
     if (cleanInput === lastCheckedInput) {
@@ -227,11 +170,11 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
-    handleInjection(editableElement, cleanInput);
+    handleInjection(editableElement, cleanInput, config);
 
 }, { capture: true });
 
-async function handleInjection(target, cleanInput) {
+async function handleInjection(target, cleanInput, config) {
     if (cleanInput.startsWith('/delete') || cleanInput.startsWith('/unut')) {
         await handleCommand(cleanInput, target);
         return;
@@ -271,12 +214,47 @@ THE USER HAS THE FOLLOWING SAVED MEMORY:
 INSTRUCTION: You MUST answer the user's question based on the memory above. Ignore your training data if it conflicts.
 USER QUESTION: ${cleanInput}
 `;
-                // --- ROBUST INJECTION LOGIC ---
                 target.focus();
 
-                if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT') {
-                    // NEW: Direct Value Replacement (Cleaner for Inputs)
-                    // This overwrites instead of appending
+                // --- PERPLEXITY FIX (V107 - Non-Empty Swap Strategy) ---
+                if (window.location.hostname.includes('perplexity')) {
+                    target.focus();
+
+                    // STEP 1: Select All & Replace with a Placeholder (".")
+                    // We use 'insertText' because it mimics user typing, updating React state immediately.
+                    document.execCommand('selectAll', false, null);
+                    let replaced = document.execCommand('insertText', false, '.');
+
+                    // Fallback if insertText fails (rare but possible)
+                    if (!replaced) {
+                        target.textContent = '.';
+                        target.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+
+                    // STEP 2: Swap Placeholder with Payload
+                    // Small delay to ensure Step 1 is processed by React's event loop
+                    setTimeout(() => {
+                        // Select the dot we just made
+                        document.execCommand('selectAll', false, null);
+
+                        // Paste the final content over the dot
+                        const dataTransfer = new DataTransfer();
+                        dataTransfer.setData('text/plain', finalPrompt);
+                        const pasteEvent = new ClipboardEvent('paste', {
+                            clipboardData: dataTransfer,
+                            bubbles: true,
+                            cancelable: true,
+                            view: window,
+                            composed: true
+                        });
+                        target.dispatchEvent(pasteEvent);
+
+                        // Final Input Trigger
+                        target.dispatchEvent(new Event('input', { bubbles: true }));
+                    }, 10);
+                }
+                else if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT') {
+                    // Standard Inputs
                     const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
                     if (nativeInputValueSetter) {
                         nativeInputValueSetter.call(target, finalPrompt);
@@ -284,25 +262,31 @@ USER QUESTION: ${cleanInput}
                         target.value = finalPrompt;
                     }
                     target.dispatchEvent(new Event('input', { bubbles: true }));
-                    target.dispatchEvent(new Event('change', { bubbles: true }));
                 } else {
-                    // NEW: ContentEditable (ChatGPT, Gemini)
-                    // RESTORED V31 LOGIC: Select All -> Delete -> InsertText
+                    // Standard ContentEditable (Mistral, Gemini, ChatGPT)
                     document.execCommand('selectAll', false, null);
                     document.execCommand('delete', false, null);
-                    document.execCommand('insertText', false, finalPrompt);
+                    const success = document.execCommand('insertText', false, finalPrompt);
 
-                    // Basic input trigger
+                    if (!success) {
+                        const dataTransfer = new DataTransfer();
+                        dataTransfer.setData('text/plain', finalPrompt);
+                        target.dispatchEvent(new ClipboardEvent('paste', {
+                            clipboardData: dataTransfer,
+                            bubbles: true,
+                            cancelable: true
+                        }));
+                    }
                     target.dispatchEvent(new Event('input', { bubbles: true }));
-                    target.dispatchEvent(new Event('change', { bubbles: true }));
                 }
 
-                console.log("✅ Memory Injected.");
+                console.log("✅ Memory Injected. Waiting for user to press Enter...");
                 lastCheckedInput = null;
                 restoreUI();
                 return;
             }
         }
+
         lastCheckedInput = cleanInput;
         restoreUI();
 
@@ -333,21 +317,19 @@ async function handleCommand(command, target) {
         const data = await response.json();
         if (data.success) {
             alert(`✅ Deleted: "${data.deleted_text}"`);
-
             if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT') {
                 target.value = "";
                 target.dispatchEvent(new Event('input', { bubbles: true }));
             } else {
                 target.innerText = "";
             }
-
         } else {
             alert(`⚠️ Error: ${data.message}`);
         }
     } catch (err) { alert("❌ Server Error"); }
 }
 
-// --- PART 2: POLLING (Smart Button Detection) ---
+// --- PART 2: POLLING ---
 
 function startPolling(config) {
     if (pollInterval) clearInterval(pollInterval);
@@ -373,7 +355,6 @@ function startPolling(config) {
 }
 
 function checkResponseState(config) {
-    // FIX: Robust Selector Handling (No queryElement dependency)
     let stopBtn = null;
     if (Array.isArray(config.stopButtonSelector)) {
         for (const sel of config.stopButtonSelector) {
@@ -385,45 +366,28 @@ function checkResponseState(config) {
     }
 
     const isStopBtnVisible = isVisible(stopBtn);
-
-    // 2. Is Streaming active?
     const isStreaming = config.streamingSelector ? document.querySelector(config.streamingSelector) : false;
     const isStreamingActive = !!isStreaming;
 
-    // Use Helper for Messages
     const { userMsgs, aiMsgs } = getMessages(config);
 
-    console.log(`🔍 Polling Check - StopVisible: ${isStopBtnVisible}, Streaming: ${isStreamingActive}, UserMsgs Found: ${userMsgs.length}`);
+    console.log(`🔍 Check - Stop: ${isStopBtnVisible}, Stream: ${isStreamingActive}, Msgs: ${userMsgs.length}/${aiMsgs.length}`);
 
-    // AI is stopped if NO stop button visible AND NO streaming happening
     const isAIStopped = !isStopBtnVisible && !isStreamingActive;
 
-    if (isAIStopped) {
-        // Ensure we have at least one pair of messages
-        if (userMsgs.length > 0 && aiMsgs.length > 0) {
-            console.log(`✅ Found ${userMsgs.length} user messages and ${aiMsgs.length} AI messages. capturing...`);
-            captureAndSave(config);
-            return true; // Stop polling
-        }
+    if (isAIStopped && userMsgs.length > 0 && aiMsgs.length > 0) {
+        captureAndSave(config);
+        return true;
     }
-    return false; // Continue polling
+    return false;
 }
 
 async function captureAndSave(config, attempt = 1) {
-    if (!globalState.auth_token || !globalState.selected_project_id) {
-        console.warn("⚠️ Aborting: Missing Auth/Project ID", globalState);
-        return;
-    }
+    if (!globalState.auth_token || !globalState.selected_project_id) return;
 
-    // Use Helper
     const { userMsgs, aiMsgs } = getMessages(config);
+    if (userMsgs.length === 0 || aiMsgs.length === 0) return;
 
-    if (userMsgs.length === 0 || aiMsgs.length === 0) {
-        console.warn("⚠️ captureAndSave aborted: No messages found despite passing polling check.");
-        return;
-    }
-
-    // Improved Extraction: Handle innerText vs textContent + Zero-Width Spaces
     const lastUserEl = userMsgs[userMsgs.length - 1];
     const lastAiEl = aiMsgs[aiMsgs.length - 1];
 
@@ -434,7 +398,6 @@ async function captureAndSave(config, attempt = 1) {
 
     console.log(`📝 Extract Attempt ${attempt} - User: "${lastUserMsg.substring(0, 20)}...", AI: "${lastAiMsg.substring(0, 20)}..."`);
 
-    // RETRY LOGIC for Empty Text (Race Condition Fix) on Gemini/DeepSeek
     if (!lastUserMsg || !lastAiMsg) {
         if (attempt < 3) {
             console.warn(`⚠️ Empty text detected. Retrying in 500ms... (Attempt ${attempt}/3)`);

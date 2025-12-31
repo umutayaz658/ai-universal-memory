@@ -3,6 +3,8 @@ from django.db import models
 from django.contrib.auth.models import User
 from pgvector.django import VectorField
 
+from .utils import EncryptedField
+
 class Project(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
@@ -14,7 +16,7 @@ class Project(models.Model):
 
 class Memory(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='memories')
-    raw_text = models.TextField()
+    raw_text = EncryptedField()
     vector = VectorField(dimensions=768)  # Using 768 dimensions as requested
     tags = models.JSONField(default=list, blank=True)
     

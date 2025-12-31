@@ -39,7 +39,7 @@ def get_embedding(text):
         print(f"Error generating embedding: {e}")
         return None
 
-def analyze_and_extract_memory(conversation_text):
+def analyze_and_extract_memory(conversation_text, existing_context=""):
     """
     Analyzes the conversation text to extract concrete technical decisions, 
     architectural choices, or project rules.
@@ -69,15 +69,11 @@ def analyze_and_extract_memory(conversation_text):
             "   - When determining the 'current state' of any value (budget, status, version), you **MUST** look at the entry with the **LATEST (NEWEST)** timestamp.\n"
             "   - **IGNORE** all older conflicting values. They are dead history.\n"
             "   - **Example:** If Context has `[09:00] Budget: 100` and `[10:00] Budget: 50`, and User says 'Add 10', the math MUST be `50 + 10 = 60`. Never use the old 100.\n"
-            "1. **MANDATORY DATE & DEADLINE CALCULATION (HIGHEST PRIORITY):**\n"
-            "   - **Trigger:** Relative dates ('tomorrow'), Durations ('in 30 days'), or **COUNTDOWNS** ('30 gün kaldı', '30 gün var', 'time remaining').\n"
-            "   - **ACTION:** Calculate the **EXACT ISO DATE (YYYY-MM-DD)**.\n"
-            "   - **LOGIC:** - 'In X days' -> Target = Today + X.\n"
-            "     - 'X days left/remaining/var/kaldı' -> Target = Today + X.\n"
-            "   - **REQUIREMENT:** You **MUST** append the calculated date to the `raw_text` in parentheses.\n"
-            "   - **Example:** (Today: 2025-12-29) User: 'Projenin bitmesine 30 gün var'. \n"
-            "     -> Output: 'Proje bitiş süresi 30 gün kaldı (Deadline: 2026-01-28).'\n"
-            "     -> Tags: ['Proje', 'Deadline: 2026-01-28', 'Status: Countdown']\n"
+            "1. **MANDATORY DATE & DEADLINE CALCULATION:**\n"
+            "   - **Trigger:** Relative dates ('yarın', 'haftaya'), Durations ('30 gün sonra'), or Countdowns.\n"
+            "   - **ACTION:** You MUST calculate the **EXACT ISO DATE** based on `CURRENT DATE`.\n"
+            "   - **OUTPUT REQUIREMENT:** The `raw_text` MUST contain the calculated date explicitly.\n"
+            "   - **Example:** User: 'Yarın başlıyoruz'. -> Output: 'Proje başlangıç tarihi 2026-01-01 olarak belirlendi.' (DO NOT just say 'Yarın').\n"
             "2. **SOURCE OF TRUTH = USER ONLY:**\n"
             "   - **EXTRACT FACTS ONLY FROM THE 'User:' SECTION.**\n"
             "   - The 'AI:' section is **READ-ONLY context**.\n"
@@ -96,14 +92,16 @@ def analyze_and_extract_memory(conversation_text):
             "6. **CODE & CONFIG DEDUCTION:**\n"
             "   - If the *USER* provides a code snippet, extract it.\n"
             "   - If the *AI* provides a snippet, IGNORE it unless the USER explicitly says 'Use that code'.\n"
-            "7. **VALUE UPDATES & STATE CHANGES (CRITICAL):**\n"
-            "   - **Trigger:** If a value changes (math, status change, version bump, checking off a pending item).\n"
-            "   - **STATE CALCULATION:** Find the LATEST value in context, perform the math, and save the NEW TOTAL.\n"
-            "   - **MANDATORY TAG:** Any memory item that contains the *NEW* resulting value MUST include the tag **'Update'** or **'Correction'**.\n"
-            "   - **Example:** User: 'Add 50k'. \n"
-            "     - Item 1: 'Added 50k.' Tags: ['Update']\n"
-            "     - Item 2: 'New Budget: 450k.' Tags: ['Budget', 'Update'] <--- (MUST HAVE 'Update' TAG TO BYPASS DEDUPLICATION)\n"
-            "   - **CONDITIONAL / PENDING CLAUSE:** IF the status is 'pending', 'proposed', 'draft', or 'not yet', **DO NOT** perform arithmetic. Extract as fact with tag `Status: Pending`.\n"
+            "7. **VALUE UPDATES & MATH (AGGRESSIVE):**\n"
+            "   - **Trigger:** If a value changes (add, subtract, contribute, spend, update).\n"
+            "   - **ACTION:**\n"
+            "     1. Find the **LATEST** value in the System Context (e.g., 'Budget: 50k').\n"
+            "     2. Perform the MATH with the new input (e.g., 'Contributed 50k' -> 50k + 50k = 100k).\n"
+            "     3. **OUTPUT THE NEW TOTAL** as the primary fact.\n"
+            "   - **Example:** Context: 'Bütçe 50.000'. User: 'Ayşe 50.000 katkı yaptı'.\n"
+            "     -> **WRONG:** 'Ayşe 50.000 katkı yaptı.'\n"
+            "     -> **CORRECT:** 'Ayşe'nin katkısıyla proje bütçesi 100.000 TL'ye yükseldi.' (Tags: 'Bütçe', 'Update', 'Ayşe')\n"
+            "   - **Note:** Treat keywords like 'Katkı', 'Ekledi', 'Support' as ADDITION to the main resource.\n"
             "7.1. **UNIVERSAL GAP & GOAL ANALYSIS (MANDATORY):**\n"
             "   - **Trigger:** If the user updates a 'Current Value' (e.g., weight, spending, pages read) AND a related 'Goal', 'Limit', or 'Target' exists in the context.\n"
             "   - **ACTION:** Calculate the difference and explicitly state the status/gap in the output.\n"
@@ -157,8 +155,19 @@ def analyze_and_extract_memory(conversation_text):
             system_instruction=system_instruction
         )
         
+        # Combine existing context with new input
+        # Force Date and Context visibility
+        full_prompt = (
+            f"� CURRENT DATE: {today_str}\n\n"
+            f"�🚨 SYSTEM CONTEXT (HISTORY - READ ONLY):\n{existing_context}\n\n"
+            f"👤 USER INPUT:\n{conversation_text}"
+        ) if existing_context else (
+            f"📅 CURRENT DATE: {today_str}\n\n"
+            f"👤 USER INPUT:\n{conversation_text}"
+        )
+        
         response = model.generate_content(
-            conversation_text,
+            full_prompt,
             generation_config={"response_mime_type": "application/json"}
         )
         

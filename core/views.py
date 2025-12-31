@@ -15,7 +15,9 @@ from . import ai_services
 import hashlib
 import markdown
 from xhtml2pdf import pisa
+from xhtml2pdf import pisa
 from django.http import HttpResponse
+from rest_framework.throttling import ScopedRateThrottle
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -47,6 +49,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
 class StoreMemoryView(views.APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai_action'
 
     def post(self, request):
         project_id = request.data.get('project_id')
@@ -65,9 +69,47 @@ class StoreMemoryView(views.APIView):
         if project.user != request.user:
             return Response({"error": "Unauthorized project access"}, status=status.HTTP_403_FORBIDDEN)
 
-        # 1. Analyze and extract memory
+        # 1. RETRIEVE CONTEXT (Source A + Source B) to enable "Context-Aware Math"
+        # We need to give the AI the current state (e.g. "Budget is 500") so it can process "Add 50" -> 550.
+        
+        context_str = ""
+        try:
+            # Generate embedding for the *current* input to find similar past memories
+            current_embedding = ai_services.get_embedding(text)
+            
+            if current_embedding:
+                # Source A: Similarity (Find relevant topics like "Budget" or "Weight")
+                similar_memories = list(Memory.objects.filter(project=project) \
+                    .annotate(distance=CosineDistance('vector', current_embedding)) \
+                    .order_by('distance')[:15]) # Top 15 relevant (Expanded)
+
+                # Source B: Recency (Find specific immediate context like "I just said X")
+                # We need the absolute latest memories to handle "Add 5 to that"
+                recent_memories = list(Memory.objects.filter(project=project) \
+                    .order_by('-created_at')[:10]) # Last 10 items (Expanded)
+
+                # Merge & Deduplicate
+                context_pool = {m.id: m for m in similar_memories + recent_memories}.values()
+                
+                # Sort by Created At (Oldest -> Newest) so the AI reads the story in order
+                sorted_pool = sorted(context_pool, key=lambda x: x.created_at)
+
+                # Format as string
+                context_lines = []
+                for m in sorted_pool:
+                    date_str = m.created_at.strftime("%Y-%m-%d %H:%M")
+                    context_lines.append(f"- [{date_str}] {m.raw_text}")
+                
+                context_str = "\n".join(context_lines)
+                print(f"🧠 INJECTING CONTEXT ({len(sorted_pool)} items):\n{context_str[:200]}...")
+
+        except Exception as e:
+            print(f"⚠️ Error retrieving context: {e}")
+            # Non-blocking: proceed without context if this fails
+
+        # 2. Analyze and extract memory (WITH CONTEXT)
         # Returns LIST of dicts [{'raw_text': str, 'tags': list, 'category': str}] or []
-        extraction_results = ai_services.analyze_and_extract_memory(text)
+        extraction_results = ai_services.analyze_and_extract_memory(text, context_str)
         print(f"🧠 DEBUG EXTRACTION: {extraction_results}")
         
         if not extraction_results:
@@ -152,6 +194,8 @@ class StoreMemoryView(views.APIView):
 
 class RetrieveContextView(views.APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai_action'
 
     def post(self, request):
         project_id = request.data.get('project_id')
@@ -211,11 +255,7 @@ class RetrieveContextView(views.APIView):
                 # Short words need loose matching (typos), Long words need strict matching (noise)
                 threshold = 0.3 if len(word) > 5 else 0.1
                 
-                # Search in Text
-                similar_text = Memory.objects.filter(project=project) \
-                    .annotate(similarity=TrigramSimilarity('raw_text', word)) \
-                    .filter(similarity__gt=threshold) \
-                    .order_by('-similarity')[:2]
+
                 
                 # Search in Tags
                 similar_tags = Memory.objects.filter(project=project) \
@@ -224,19 +264,12 @@ class RetrieveContextView(views.APIView):
                     .filter(similarity__gt=threshold) \
                     .order_by('-similarity')[:2]
 
-                if len(similar_text) > 0 or len(similar_tags) > 0:
-                    print(f"🎯 DEBUG KEYWORD MATCH for '{word}' (Thresh: {threshold}): Found {len(similar_text)} text, {len(similar_tags)} tags")
+                if len(similar_tags) > 0:
+                    print(f"🎯 DEBUG KEYWORD MATCH for '{word}' (Thresh: {threshold}): Found {len(similar_tags)} tags")
 
-                keyword_memories.extend(list(similar_text))
                 keyword_memories.extend(list(similar_tags))
                 
-                # UNACCENT MATCH (High Confidence - Explicit for variations)
-                # Catches "butce" -> "bütçe" very reliably without relying on fuzzy threshold
-                # Note: UnaccentExtension must be installed for __unaccent lookup
-                unaccent_matches = Memory.objects.filter(project=project, raw_text__unaccent__icontains=word)[:2]
-                if unaccent_matches:
-                    print(f"✅ UNACCENT MATCH for '{word}': Found {len(unaccent_matches)}")
-                    keyword_memories.extend(list(unaccent_matches))
+
 
         # 4. Merge and Deduplicate (Keep relevance ranking)
         # PRIORITY: Vectors FIRST, then Keywords
@@ -482,3 +515,46 @@ class ProjectExportView(views.APIView):
             "project_name": project.name,
             "report": report_markdown
         }, status=status.HTTP_200_OK)
+
+class SiteConfigView(views.APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        sites_config = {
+            'chatgpt.com': {
+                'button': 'button[data-testid="send-button"], button[data-testid="fruitjuice-send-button"], #composer-submit-button',
+                'stopButtonSelector': 'button[aria-label="Stop generating"], button[data-testid="stop-button"]',
+                'streamingSelector': '.result-streaming',
+                'userMsg': 'div[data-message-author-role="user"]',
+                'aiMsg': 'div[data-message-author-role="assistant"]'
+            },
+            'gemini.google.com': {
+                'button': '.send-button, button:has(mat-icon[data-mat-icon-name="send"]), button:has(mat-icon[fonticon="send"])',
+                'stopButtonSelector': 'button[aria-label="Stop response"]',
+                'streamingSelector': '.streaming',
+                'userMsg': ['.query-text', '.user-query', 'div[data-message-author-role="user"]'],
+                'aiMsg': ['.markdown', '.model-response', 'message-content']
+            },
+            'chat.deepseek.com': {
+                'button': 'div[role="button"]:has(svg)',
+                'stopButtonSelector': ['div[role="button"]:has(svg rect)', '.ds-stop-button', '[aria-label="Stop"]'],
+                'streamingSelector': '.ds-markdown--assistant.streaming',
+                'userMsg': ['div.fbb737a4', '.ds-markdown--user'],
+                'aiMsg': ['.ds-markdown']
+            },
+            'chat.mistral.ai': {
+                'button': 'button[aria-label="Send query"], button:has(svg)',
+                'stopButtonSelector': 'button[aria-label="Stop generating"]',
+                'streamingSelector': '.animate-pulse',
+                'userMsg': ['.bg-basic-gray-alpha-4 .select-text', 'div.ms-auto .select-text', '.select-text'],
+                'aiMsg': ['div[data-message-part-type="answer"]', '.markdown-container-style', '.prose']
+            },
+            'perplexity.ai': {
+                'button': 'button[aria-label="Submit"], button[aria-label="Ask"]',
+                'stopButtonSelector': 'button[aria-label="Stop"]',
+                'streamingSelector': '.animate-pulse',
+                'userMsg': ['h1 .select-text', 'div[class*="group/query"] .select-text', '.font-display'],
+                'aiMsg': ['.prose', 'div[dir="auto"]']
+            }
+        }
+        return Response(sites_config, status=status.HTTP_200_OK)

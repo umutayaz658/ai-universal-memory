@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
-    "name": "AI Universal Memory",
-    "version": "1.0",
-    "description": "Injects your project context into ChatGPT & Gemini.",
+    "name": "Nomad MemorAI",
+    "version": "1.2",
+    "description": "Injects your project context into ChatGPT, Gemini, DeepSeek, Mistral & Perplexity.",
     "permissions": [
         "storage",
         "activeTab",
@@ -10,17 +10,30 @@
     ],
     "host_permissions": [
         "http://127.0.0.1:8000/*",
-        "https://chat.deepseek.com/*"
+        "https://chat.deepseek.com/*",
+        "https://chat.mistral.ai/*",
+        "https://www.perplexity.ai/*"
     ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "icons": {
+        "16": "logo.png",
+        "48": "logo.png",
+        "128": "logo.png"
+    },
     "action": {
-        "default_popup": "popup.html"
+        "default_popup": "popup.html",
+        "default_icon": "logo.png"
     },
     "content_scripts": [
         {
             "matches": [
                 "https://chatgpt.com/*",
                 "https://gemini.google.com/*",
-                "https://chat.deepseek.com/*"
+                "https://chat.deepseek.com/*",
+                "https://chat.mistral.ai/*",
+                "https://www.perplexity.ai/*"
             ],
             "js": [
                 "content.js"

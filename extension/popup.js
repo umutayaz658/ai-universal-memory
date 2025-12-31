@@ -4,7 +4,8 @@ const API_URL = "http://127.0.0.1:8000/api";
 const screens = {
     login: document.getElementById('login-screen'),
     register: document.getElementById('register-screen'),
-    main: document.getElementById('main-screen')
+    main: document.getElementById('main-screen'),
+    howItWorks: document.getElementById('how-it-works-screen')
 };
 
 const forms = {
@@ -23,7 +24,9 @@ const elements = {
     newProjectName: document.getElementById('new-project-name'),
     memoryList: document.getElementById('memory-list'),
     memorySearch: document.getElementById('memory-search'),
-    exportReportBtn: document.getElementById('export-report-btn')
+    exportReportBtn: document.getElementById('export-report-btn'),
+    btnHowItWorks: document.getElementById('btn-how-it-works'),
+    btnBackFromHelp: document.getElementById('btn-back-from-help')
 };
 
 function clearMemoryUI() {
@@ -57,6 +60,34 @@ elements.goToRegister.addEventListener('click', () => {
     clearStatus();
     showScreen('register');
 });
+
+// Help Navigation
+// 1. Main Screen Link
+if (elements.btnHowItWorks) {
+    elements.btnHowItWorks.addEventListener('click', (e) => {
+        e.preventDefault();
+        showScreen('howItWorks');
+    });
+}
+// 2. Auth Screen Links (Class based)
+document.querySelectorAll('.btn-how-it-works-link').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        showScreen('howItWorks');
+    });
+});
+
+// 3. Back Button
+if (elements.btnBackFromHelp) {
+    elements.btnBackFromHelp.addEventListener('click', async () => {
+        const { auth_token } = await chrome.storage.local.get(['auth_token']);
+        if (auth_token) {
+            showScreen('main');
+        } else {
+            showScreen('login');
+        }
+    });
+}
 
 elements.goToLogin.addEventListener('click', () => {
     clearStatus();

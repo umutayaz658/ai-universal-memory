@@ -4,41 +4,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Universal Memory</title>
+    <title>Nomad MemorAI</title>
     <style>
         :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --primary-color: #3b82f6;
-            --primary-hover: #2563eb;
+            /* NOMAD DAYLIGHT REFINED */
+            --bg-color: #f0f0ee;
+            /* Stone-150: Slightly Darker Cream */
+            --card-bg: #ffffff;
+            /* Pure White */
+            --text-primary: #1c1917;
+            /* Stone-900 */
+            --text-secondary: #78716c;
+            /* Stone-500 */
+            --primary-gradient: linear-gradient(135deg, #ea580c, #c2410c);
+            /* Burnt Orange */
+            --primary-hover: #9a3412;
             --error-color: #ef4444;
             --success-color: #10b981;
-            --input-bg: #334155;
-            --border-color: #475569;
+            --input-bg: #ffffff;
+            --border-color: #e7e5e4;
+            /* Stone-200 */
+
+            /* Enhanced Shadows */
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
 
         body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-primary);
             margin: 0;
-            padding: 16px;
-            width: 320px;
+            padding: 0;
+            width: 400px;
+            /* Allow height to grow but keep it compact usually. 
+               The scrollbar issue happens when content > viewport. 
+               We will compact the content. */
             min-height: 400px;
+            font-size: 14px;
+            -webkit-font-smoothing: antialiased;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Container for content to add padding back where needed */
+        .content-container {
+            padding: 16px;
+            /* COMPACTED: 20px -> 16px */
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Helper to push content to top and leave space for footer if needed */
+        .content-wrapper {
+            flex: 1;
         }
 
         h1,
         h2,
         h3 {
             margin: 0 0 16px 0;
-            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: 800;
+            margin-bottom: 6px;
+            /* COMPACTED: 8px -> 6px */
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
         }
 
         h2 {
-            font-size: 1.25rem;
+            font-size: 1.0rem;
+            /* Slightly smaller subheader */
+            font-weight: 600;
             text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        /* App Logo Styles */
+        .app-logo {
+            display: block;
+            margin: 0 auto 8px auto;
+            /* COMPACTED: 10px -> 8px */
+            width: 56px;
+            /* COMPACTED: 64px -> 56px */
+            height: auto;
+            filter: drop-shadow(0 4px 6px rgba(234, 88, 12, 0.3));
         }
 
         .hidden {
@@ -47,121 +106,199 @@
 
         /* Forms & Inputs */
         .form-group {
-            margin-bottom: 12px;
+            margin-bottom: 10px;
+            /* COMPACTED: 12px -> 10px */
         }
 
         label {
             display: block;
-            font-size: 0.875rem;
+            font-size: 0.8rem;
             color: var(--text-secondary);
             margin-bottom: 4px;
+            /* COMPACTED: 6px -> 4px */
+            font-weight: 600;
         }
 
         input,
         select {
             width: 100%;
-            padding: 8px 12px;
-            border-radius: 6px;
+            max-width: 100%;
+            height: 36px;
+            /* COMPACTED: 40px -> 36px */
+            padding: 0 12px;
+            border-radius: 8px;
             border: 1px solid var(--border-color);
             background-color: var(--input-bg);
             color: var(--text-primary);
             box-sizing: border-box;
             font-size: 0.9rem;
-            transition: all 0.2s;
+            font-family: inherit;
+            transition: all 0.2s ease;
         }
 
         input:focus,
         select:focus {
             outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+            border-color: #ea580c;
+            box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.1);
+        }
+
+        /* Stacked Create Project Form */
+        #create-project-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        #create-project-form input,
+        #create-project-form button {
+            width: 100%;
         }
 
         /* Buttons */
         .btn {
             width: 100%;
-            padding: 10px;
-            border-radius: 6px;
+            height: 36px;
+            /* COMPACTED: 40px -> 36px */
+            padding: 0 16px;
+            border-radius: 8px;
             border: none;
             cursor: pointer;
-            font-weight: 500;
-            transition: background-color 0.2s;
+            font-weight: 600;
             font-size: 0.9rem;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .btn-primary {
-            background-color: var(--primary-color);
+            background: var(--primary-gradient);
             color: white;
+            box-shadow: 0 2px 4px rgba(234, 88, 12, 0.25);
         }
 
         .btn-primary:hover {
-            background-color: var(--primary-hover);
+            opacity: 0.95;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(234, 88, 12, 0.35);
         }
 
         .btn-secondary {
-            background-color: #6366f1;
-            /* Indigo-500 */
-            color: white;
-            margin-top: 12px;
+            background-color: white;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            box-shadow: var(--shadow-sm);
         }
 
         .btn-secondary:hover {
-            background-color: #4f46e5;
-            /* Indigo-600 */
+            border-color: var(--text-primary);
+            color: var(--text-primary);
+            background-color: #fafaf9;
         }
 
         .btn-text {
             background: none;
             color: var(--text-secondary);
-            margin-top: 8px;
-            font-size: 0.8rem;
+            margin-top: 10px;
+            /* COMPACTED: 12px -> 10px */
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-decoration: none;
         }
 
         .btn-text:hover {
-            color: var(--primary-color);
+            color: #ea580c;
             text-decoration: underline;
+        }
+
+        /* Footer Actions Area */
+        .footer-actions {
+            margin-top: auto;
+            background-color: #f9f9f8;
+            border-top: 1px solid #e7e5e4;
+            padding: 16px 24px 8px 24px;
+            border-radius: 0 0 0 0;
         }
 
         .btn-logout {
             background-color: transparent;
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--text-secondary);
             color: var(--text-secondary);
-            margin-top: 20px;
+            margin-top: 12px;
+            border-radius: 8px;
+            font-weight: 600;
         }
 
         .btn-logout:hover {
-            background-color: var(--card-bg);
-            color: var(--text-primary);
+            background-color: var(--text-secondary);
+            color: white;
+            border-color: var(--text-secondary);
+        }
+
+        /* Bottom Links */
+        .bottom-links {
+            text-align: center;
+            padding: 10px 0 0 0;
+            /* Reduced padding */
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: auto;
+        }
+
+        #main-screen .bottom-links {
+            background-color: #f9f9f8;
+            padding-bottom: 20px;
+        }
+
+        .bottom-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin: 0 8px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .bottom-links a:hover {
+            color: #ea580c;
+            /* Accent */
         }
 
         /* Status Messages */
         #status-msg {
-            margin-top: 12px;
-            padding: 8px;
-            border-radius: 4px;
+            margin: 0 24px 16px 24px;
+            padding: 12px;
+            border-radius: 8px;
             font-size: 0.85rem;
             text-align: center;
+            font-weight: 500;
         }
 
         .status-error {
-            background-color: rgba(239, 68, 68, 0.1);
+            background-color: #fef2f2;
             color: var(--error-color);
+            border: 1px solid #fecaca;
         }
 
         .status-success {
-            background-color: rgba(16, 185, 129, 0.1);
+            background-color: #ecfdf5;
             color: var(--success-color);
+            border: 1px solid #a7f3d0;
         }
 
         /* Layout Containers */
         .screen {
-            animation: fadeIn 0.3s ease-in-out;
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+            min-height: 100%;
         }
 
-        @keyframes fadeIn {
+        @keyframes slideUp {
             from {
                 opacity: 0;
-                transform: translateY(5px);
+                transform: translateY(10px);
             }
 
             to {
@@ -173,56 +310,98 @@
         .divider {
             height: 1px;
             background-color: var(--border-color);
-            margin: 20px 0;
+            margin: 24px 0;
+            opacity: 0.8;
         }
 
         .project-card {
             background-color: var(--card-bg);
-            padding: 12px;
-            border-radius: 8px;
+            padding: 20px;
+            border-radius: 12px;
             border: 1px solid var(--border-color);
-            margin-bottom: 16px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .project-card h3 {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 700;
         }
 
         .user-info {
             text-align: center;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             color: var(--text-secondary);
-            margin-bottom: 16px;
+            margin-bottom: 24px;
+            font-weight: 500;
         }
 
-        /* Memory List Styles */
+        #current-user {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Memory List */
         #memory-list {
-            max-height: 200px;
+            max-height: 240px;
             overflow-y: auto;
-            margin-top: 10px;
-            border-top: 1px solid var(--border-color);
-            padding-top: 10px;
+            margin-top: 16px;
+            padding-right: 6px;
+            scrollbar-width: thin;
+            scrollbar-color: #d6d3d1 transparent;
+        }
+
+        #memory-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #memory-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #memory-list::-webkit-scrollbar-thumb {
+            background-color: #d6d3d1;
+            border-radius: 10px;
+            border: 2px solid transparent;
+            background-clip: content-box;
+        }
+
+        #memory-list::-webkit-scrollbar-thumb:hover {
+            background-color: #a8a29e;
         }
 
         .memory-card {
             background-color: var(--card-bg);
-            padding: 10px;
-            border-radius: 6px;
+            padding: 14px;
+            border-radius: 12px;
             border: 1px solid var(--border-color);
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 0.85rem;
-            transition: background-color 0.2s;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-sm);
         }
 
         .memory-card:hover {
-            background-color: #2b3950;
+            border-color: #ea580c;
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
         }
 
         .memory-text {
             flex: 1;
-            margin-right: 8px;
+            margin-right: 12px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            color: var(--text-primary);
+            font-weight: 500;
         }
 
         .delete-mem-btn {
@@ -231,16 +410,71 @@
             color: var(--text-secondary);
             cursor: pointer;
             font-size: 1.1rem;
-            padding: 4px;
-            border-radius: 4px;
+            padding: 6px;
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all 0.2s;
         }
 
         .delete-mem-btn:hover {
             color: var(--error-color);
-            background-color: rgba(239, 68, 68, 0.1);
+            background-color: #fef2f2;
+        }
+
+        /* Help Screen Steps */
+        .step-item {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+            background: var(--card-bg);
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+        }
+
+        .step-icon {
+            font-size: 1.5rem;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff7ed;
+            /* Very light orange */
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .step-content h4 {
+            margin: 0 0 4px 0;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        .step-content p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+
+        .badge-key {
+            background-color: #e7e5e4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.85em;
+            color: var(--text-primary);
+            border: 1px solid #d6d3d1;
+        }
+
+        .warn-text {
+            color: #b91c1c;
+            font-weight: 600;
         }
     </style>
 </head>
@@ -249,103 +483,182 @@
 
     <!-- 1. LOGIN SCREEN -->
     <div id="login-screen" class="screen">
-        <h2>🔒 Login</h2>
-        <form id="login-form">
-            <div class="form-group">
-                <label>Username</label>
-                <input type="text" id="login-username" required placeholder="Enter username">
+        <div class="content-container">
+            <div class="content-wrapper">
+                <img src="logo.png" alt="Nomad MemorAI Logo" class="app-logo">
+                <h1>Nomad MemorAI</h1>
+                <h2>Welcome Back</h2>
+                <form id="login-form">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" id="login-username" required placeholder="email@domain.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="login-password" required placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Sign In</button>
+                    <div style="text-align:center;">
+                        <button type="button" id="go-to-register" class="btn btn-text">Create an account</button>
+                    </div>
+                </form>
             </div>
-            <div class="form-group">
-                <label>Password</label>
-                <input type="password" id="login-password" required placeholder="••••••••">
+
+            <!-- Footer Links for Login -->
+            <div class="bottom-links">
+                <a href="#" class="btn-how-it-works-link">How it Works</a> |
+                <a href="https://docs.google.com/forms/d/e/1FAIpQLScFITzWxMKZdG04L1uKYHFxz7o-3OmsZj8vlBrJOM2ZdBlODQ/viewform?usp=header"
+                    target="_blank">Feedback</a>
             </div>
-            <button type="submit" class="btn btn-primary">Sign In</button>
-            <button type="button" id="go-to-register" class="btn btn-text">Don't have an account? Register</button>
-        </form>
+        </div>
     </div>
 
     <!-- 2. REGISTER SCREEN -->
     <div id="register-screen" class="screen hidden">
-        <h2>✨ Create Account</h2>
-        <form id="register-form">
-            <div class="form-group">
-                <label>Username</label>
-                <input type="text" id="reg-username" required placeholder="Choose username">
+        <div class="content-container">
+            <div class="content-wrapper">
+                <img src="logo.png" alt="Nomad MemorAI Logo" class="app-logo">
+                <h1>Nomad MemorAI</h1>
+                <h2>Create Account</h2>
+                <form id="register-form">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" id="reg-username" required placeholder="Choose a username">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="reg-email" required placeholder="you@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="reg-password" required placeholder="Min. 8 characters">
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm Password</label>
+                        <input type="password" id="reg-confirm-password" required placeholder="Repeat password">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Sign Up</button>
+                    <div style="text-align:center;">
+                        <button type="button" id="go-to-login" class="btn btn-text">Back to Login</button>
+                    </div>
+                </form>
             </div>
-            <div class="form-group">
-                <label>Email</label>
-                <input type="email" id="reg-email" required placeholder="you@example.com">
+
+            <!-- Footer Links for Register -->
+            <div class="bottom-links">
+                <a href="#" class="btn-how-it-works-link">How it Works</a> |
+                <a href="https://docs.google.com/forms/d/e/1FAIpQLScFITzWxMKZdG04L1uKYHFxz7o-3OmsZj8vlBrJOM2ZdBlODQ/viewform?usp=header"
+                    target="_blank">Feedback</a>
             </div>
-            <div class="form-group">
-                <label>Password</label>
-                <input type="password" id="reg-password" required placeholder="••••••••">
-            </div>
-            <div class="form-group">
-                <label>Confirm Password</label>
-                <input type="password" id="reg-confirm-password" required placeholder="••••••••">
-            </div>
-            <button type="submit" class="btn btn-primary">Register</button>
-            <button type="button" id="go-to-login" class="btn btn-text">Already have an account? Login</button>
-        </form>
+        </div>
     </div>
 
     <!-- 3. MAIN SCREEN (Projects) -->
     <div id="main-screen" class="screen hidden">
-        <div class="user-info">
-            Logged in as <span id="current-user" style="color: var(--text-primary); font-weight: 600;">...</span>
-        </div>
+        <div class="content-container">
+            <h1>Nomad MemorAI</h1>
+            <div class="user-info">
+                Signed in as <span id="current-user">Guest</span>
+            </div>
 
-        <div class="project-card">
-            <h3>📂 Active Project</h3>
-            <div class="form-group">
-                <select id="project-select">
-                    <option value="" disabled selected>Loading projects...</option>
-                </select>
+            <div class="project-card">
+                <h3>Active Workspace</h3>
+                <div class="form-group" style="margin-bottom:0;">
+                    <select id="project-select">
+                        <option value="" disabled selected>Select a project...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <h3>New Workspace</h3>
+            <form id="create-project-form">
+                <input type="text" id="new-project-name" placeholder="Project Name" required>
+                <button type="submit" class="btn btn-primary">Create</button>
+            </form>
+
+            <div class="divider"></div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                <h3 style="margin:0;">Memories</h3>
+            </div>
+
+            <input type="text" id="memory-search" placeholder="Search memories..." style="margin-bottom: 10px;">
+
+            <div id="memory-list">
+                <!-- Memories will be populated here -->
+                <div style="text-align: center; color: var(--text-secondary); padding: 20px; font-size: 0.9rem;">
+                    No memories found.
+                </div>
             </div>
         </div>
 
-        <div class="divider"></div>
-
-        <h3>➕ New Project</h3>
-        <form id="create-project-form">
-            <div class="form-group">
-                <input type="text" id="new-project-name" placeholder="Project name (e.g. 'Project Alpha')" required>
+        <!-- Sticky Footer for Actions -->
+        <div class="footer-actions">
+            <!-- Export Dropdown -->
+            <div style="position: relative;">
+                <button id="export-menu-btn" class="btn btn-secondary">Export Data ▼</button>
+                <div id="export-options" class="hidden"
+                    style="position: absolute; bottom: 100%; left: 0; right: 0; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 8px; overflow: hidden; z-index: 100; box-shadow: var(--shadow-lg);">
+                    <button id="export-md" class="btn"
+                        style="border-radius: 0; text-align: left; background: transparent; color: var(--text-primary); font-weight: 500; height: 48px; box-shadow:none;">
+                        📝 Markdown (.md)
+                    </button>
+                    <button id="export-pdf" class="btn"
+                        style="border-radius: 0; text-align: left; background: transparent; color: var(--text-primary); border-top: 1px solid var(--border-color); font-weight: 500; height: 48px; box-shadow:none;">
+                        📑 PDF Document (.pdf)
+                    </button>
+                </div>
             </div>
-            <button type="submit" class="btn btn-primary">Create Project</button>
-        </form>
 
-        <div class="divider"></div>
-
-        <h3>🧠 Project Memories</h3>
-        <div class="form-group">
-            <input type="text" id="memory-search" placeholder="Search in memories...">
-        </div>
-        <div id="memory-list">
-            <!-- Memories will be populated here -->
-            <div style="text-align: center; color: var(--text-secondary); padding: 10px;">Select a project to view
-                memories</div>
+            <button id="logout-btn" class="btn btn-logout">Sign Out</button>
         </div>
 
-    </div>
-
-    </div>
-
-    <!-- Export Dropdown -->
-    <div style="position: relative;">
-        <button id="export-menu-btn" class="btn btn-secondary">📄 Export Report ▼</button>
-        <div id="export-options" class="hidden"
-            style="position: absolute; bottom: 100%; left: 0; right: 0; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 5px; overflow: hidden; z-index: 10;">
-            <button id="export-md" class="btn"
-                style="border-radius: 0; text-align: left; background: transparent; color: var(--text-primary);">📝
-                Markdown
-                (.md)</button>
-            <button id="export-pdf" class="btn"
-                style="border-radius: 0; text-align: left; background: transparent; color: var(--text-primary); border-top: 1px solid var(--border-color);">📑
-                PDF Document (.pdf)</button>
+        <!-- Footer Links -->
+        <div class="bottom-links">
+            <a href="#" id="btn-how-it-works">How it Works</a> |
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLScFITzWxMKZdG04L1uKYHFxz7o-3OmsZj8vlBrJOM2ZdBlODQ/viewform?usp=header"
+                target="_blank" id="link-feedback">Feedback</a>
         </div>
     </div>
 
-    <button id="logout-btn" class="btn btn-logout">Sign Out</button>
+    <!-- 4. HOW IT WORKS SCREEN -->
+    <div id="how-it-works-screen" class="screen hidden">
+        <div class="content-container">
+            <img src="logo.png" alt="Nomad MemorAI Logo" class="app-logo">
+            <h1>How Nomad Works</h1>
+
+            <div class="step-item">
+                <div class="step-icon">✍️</div>
+                <div class="step-content">
+                    <h4>Write Clearly</h4>
+                    <p>Create a Workspace. For best AI performance, ensure your memories are written clearly with
+                        correct spelling.</p>
+                </div>
+            </div>
+
+            <div class="step-item">
+                <div class="step-icon">⌨️</div>
+                <div class="step-content">
+                    <h4>Press Enter Twice</h4>
+                    <p><b>1st Enter:</b> Injects your context into the chat box.<br>
+                        <b>2nd Enter:</b> Sends the message to the AI.
+                    </p>
+                </div>
+            </div>
+
+            <div class="step-item">
+                <div class="step-icon">🗑️</div>
+                <div class="step-content">
+                    <h4>Delete Data</h4>
+                    <p>Type <span class="badge-key">/delete</span> followed by the keyword to remove specific memories.
+                        Be precise!</p>
+                </div>
+            </div>
+
+            <button id="btn-back-from-help" class="btn btn-secondary" style="margin-top:20px;">Back</button>
+        </div>
     </div>
 
     <!-- GLOBAL STATUS MESSAGE -->

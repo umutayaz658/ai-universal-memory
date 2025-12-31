@@ -13,7 +13,8 @@ class ProjectAdmin(admin.ModelAdmin):
 class MemoryAdmin(admin.ModelAdmin):
     list_display = ('project', 'short_text', 'category', 'created_at')
     list_filter = ('project__user', 'project', 'category', 'created_at')
-    search_fields = ('raw_text', 'tags', 'project__name')
+    # Removed 'raw_text' from search because it is now encrypted and cannot be searched by DB
+    search_fields = ('tags', 'project__name')
     ordering = ('-created_at',)
     
     # 🛡️ THE CRASH-PROOF FIX 🛡️
