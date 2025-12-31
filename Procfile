@@ -1,1 +1,1 @@
-web: python manage.py migrate && gunicorn universal_memory.wsgi --bind 0.0.0.0:$PORT --log-file -
+web: python manage.py migrate && (python manage.py createsuperuser --noinput || true) && gunicorn universal_memory.wsgi --bind 0.0.0.0:$PORT --log-file -
