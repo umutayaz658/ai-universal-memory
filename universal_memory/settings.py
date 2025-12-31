@@ -10,7 +10,10 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
-CSRF_TRUSTED_ORIGINS = ['https://*.railway.app']
+CSRF_TRUSTED_ORIGINS = [
+    "https://ai-universal-memory-production.up.railway.app",
+    'https://*.railway.app'
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -123,3 +126,4 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOW_ALL_ORIGINS = True  # For development convenience
+CORS_ALLOW_CREDENTIALS = True
