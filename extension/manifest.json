@@ -10,7 +10,6 @@
     ],
     "host_permissions": [
         "https://ai-universal-memory-production.up.railway.app/*",
-        "http://127.0.0.1:8000/*",
         "https://chat.deepseek.com/*",
         "https://chat.mistral.ai/*",
         "https://www.perplexity.ai/*"
