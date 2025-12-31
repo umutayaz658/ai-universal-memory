@@ -11,3 +11,4 @@ json_repair
 python-dotenv
 gunicorn
 cryptography
+dj-database-url

@@ -9,6 +9,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
+CSRF_TRUSTED_ORIGINS = ['https://*.railway.app']
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -88,6 +90,13 @@ DATABASES = {
         'PORT': os.environ.get('DATABASE_PORT', '5432'),
     }
 }
+
+if os.environ.get('DATABASE_URL'):
+    DATABASES['default'] = dj_database_url.config(
+        default=os.environ.get('DATABASE_URL'),
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 
 AUTH_PASSWORD_VALIDATORS = [
     {
