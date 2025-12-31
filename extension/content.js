@@ -63,7 +63,7 @@ let activeSitesConfig = DEFAULT_SITES;
 
 function fetchRemoteConfig() {
     console.log("🌐 Fetching Remote Site Config...");
-    fetch('https://web-production-7e6a8.up.railway.app/api/config/sites/')
+    fetch('https://ai-universal-memory-production.up.railway.app/api/config/sites/')
         .then(res => res.json())
         .then(data => {
             if (data && Object.keys(data).length > 0) {
@@ -186,7 +186,7 @@ async function handleInjection(target, cleanInput, config) {
     const restoreUI = () => { target.style.opacity = originalOpacity || '1'; };
 
     try {
-        const response = await fetch('https://web-production-7e6a8.up.railway.app/api/memories/retrieve/', {
+        const response = await fetch('https://ai-universal-memory-production.up.railway.app/api/memories/retrieve/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -303,7 +303,7 @@ async function handleCommand(command, target) {
     target.innerText = "⏳ Siliniyor...";
 
     try {
-        const response = await fetch('https://web-production-7e6a8.up.railway.app/api/memories/delete/', {
+        const response = await fetch('https://ai-universal-memory-production.up.railway.app/api/memories/delete/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -410,7 +410,7 @@ async function captureAndSave(config, attempt = 1) {
     }
 
     try {
-        await fetch('https://web-production-7e6a8.up.railway.app/api/memories/store/', {
+        await fetch('https://ai-universal-memory-production.up.railway.app/api/memories/store/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

@@ -9,7 +9,7 @@
         "scripting"
     ],
     "host_permissions": [
-        "https://web-production-7e6a8.up.railway.app/*",
+        "https://ai-universal-memory-production.up.railway.app/*",
         "http://127.0.0.1:8000/*",
         "https://chat.deepseek.com/*",
         "https://chat.mistral.ai/*",

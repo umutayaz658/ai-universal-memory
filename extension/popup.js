@@ -1,4 +1,4 @@
-const API_URL = "https://web-production-7e6a8.up.railway.app/api";
+const API_URL = "https://ai-universal-memory-production.up.railway.app/api";
 
 // DOM Elements
 const screens = {
