@@ -1,11 +1,10 @@
 {
     "manifest_version": 3,
     "name": "Nomad MemorAI",
-    "version": "1.3",
+    "version": "1.4",
     "description": "Injects your project context into ChatGPT, Gemini, DeepSeek, Mistral & Perplexity.",
     "permissions": [
-        "storage",
-        "activeTab"
+        "storage"
     ],
     "host_permissions": [
         "https://ai-universal-memory-production.up.railway.app/*",
