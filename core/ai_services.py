@@ -128,13 +128,19 @@ def analyze_and_extract_memory(conversation_text, existing_context=""):
         
         # Combine existing context with new input
         # Force Date and Context visibility
+        language_reminder = (
+            "\n\n🛑 FINAL INSTRUCTION: OUTPUT MUST BE IN THE SAME LANGUAGE AS THE 'USER INPUT' ABOVE. "
+            "IF USER INPUT IS ENGLISH, OUTPUT ENGLISH. IF TURKISH, OUTPUT TURKISH."
+        )
         full_prompt = (
             f"� CURRENT DATE: {today_str}\n\n"
             f"�🚨 SYSTEM CONTEXT (HISTORY - READ ONLY):\n{existing_context}\n\n"
             f"👤 USER INPUT:\n{conversation_text}"
+            f"{language_reminder}"
         ) if existing_context else (
             f"📅 CURRENT DATE: {today_str}\n\n"
             f"👤 USER INPUT:\n{conversation_text}"
+            f"{language_reminder}"
         )
         
         response = model.generate_content(
