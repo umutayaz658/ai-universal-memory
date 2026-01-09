@@ -145,12 +145,16 @@ class StoreMemoryView(views.APIView):
                 'yenileme', 'revizyon', 'guncelleme', 
                 'status', 'durum', 'pending', 'beklemede', 'draft', 'taslak'
             }
+            
             is_correction = False
-            for tag in tags:
-                tag_lower = str(tag).lower()
-                if any(k in tag_lower for k in correction_keywords):
-                    is_correction = True
-                    break
+            
+            # Etiketleri, kategoriyi ve metni birleştirip tek seferde kontrol ediyoruz
+            # tags listesindeki elemanları string'e çevirmeyi garantiye alıyoruz
+            tags_str = " ".join([str(t) for t in tags]) 
+            check_text = (extracted_text + " " + category + " " + tags_str).lower()
+
+            if any(k in check_text for k in correction_keywords):
+                is_correction = True
 
             if is_correction:
                 print("🚀 Correction detected. Skipping deduplication.")
@@ -169,7 +173,7 @@ class StoreMemoryView(views.APIView):
                         "reason": "Duplicate"
                     })
                     continue
-
+                
             # 4. Save Memory
             memory = Memory.objects.create(
                 project=project,
